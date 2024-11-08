@@ -1,0 +1,35 @@
+# Archivos de entorno virtual
+venv/
+.env
+
+# Configuración del entorno
+*.env
+*.env.*
+
+# Archivos y carpetas de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+.Python
+*.sqlite3
+
+# Configuración de IDEs
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de logs y debugging
+*.log
+logs/
+
+# Archivos temporales y de sistema
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración de despliegue
+Procfile
