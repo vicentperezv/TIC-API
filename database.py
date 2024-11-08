@@ -6,6 +6,5 @@ MONGO_DB_URL = os.getenv("MONGO_DB_URL")
 
 # Crear cliente y base de datos
 client = AsyncIOMotorClient(MONGO_DB_URL)
-client = AsyncIOMotorClient(MONGO_DB_URL)
 db = client["TIC"]  # Selecciona la base de datos "TIC"
 sensor_collection = db["sensor"]  # Selecciona la colección "sensor"
