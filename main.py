@@ -13,7 +13,7 @@ async def add_sensor_data(data: SensorData):
         result = await sensor_collection.insert_one(data.dict())
         return {"status": "Data inserted", "id": str(result.inserted_id)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error inserting data")
+        raise HTTPException(status_code=500, detail=f"Error inserting data: {str(e)}")
 
 # Endpoint para obtener las últimas 10 inserciones
 @app.get("/sensor-data/recent", response_model=List[SensorData])
@@ -23,7 +23,8 @@ async def get_recent_sensor_data():
         recent_data = await sensor_collection.find().sort("timestamp", -1).limit(10).to_list(length=10)
         return recent_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error retrieving data")
+        raise HTTPException(status_code=500, detail=f"Error inserting data: {str(e)}")
+        
 
 
 @app.get("/")
