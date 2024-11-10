@@ -76,6 +76,28 @@ async def get_average_sensor_data(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error calculating average data")
 
+# Endpoint para obtener todos los datos en un rango de fechas
+@app.get("/sensor-data/range", response_model=List[SensorData], dependencies=[Depends(verify_api_key)])
+async def get_sensor_data_in_range(
+    start_date: datetime = Query(..., description="Fecha de inicio"),
+    end_date: datetime = Query(..., description="Fecha de fin")
+):
+    try:
+        # Filtra los datos en el rango de fechas especificado
+        data = await sensor_collection.find({
+            "timestamp": {"$gte": start_date, "$lte": end_date}
+        }).to_list(length=None)
+        
+        if not data:
+            raise HTTPException(status_code=404, detail="No data found in the given date range")
+        
+        # Devuelve todos los datos encontrados en el rango de fechas
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error retrieving data")
+
+
+
 # Endpoint para obtener el valor máximo de temperatura y CO2 en un rango de fechas
 @app.get("/sensor-data/max", dependencies=[Depends(verify_api_key)])
 async def get_max_sensor_data(
