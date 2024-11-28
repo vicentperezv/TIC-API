@@ -250,7 +250,7 @@ async def generar_excel(query, promedio):
         await query.message.reply_document(document=f, filename=nombre_archivo)
 
 async def main() -> None:
-    TOKEN = "7895502311:AAEY1Db6DfdL32ONFDEiRNjE5WQgQjPpVbE"
+    TOKEN = ""
     application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
