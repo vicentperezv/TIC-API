@@ -1,19 +1,22 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
-from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 import os
 import pandas as pd
 import numpy as np
+import bcrypt
 from models.sensor_data import SensorData
-
-from database import sensor_collection  # Importa la colección "sensor" configurada
+from models.user import UserCreate, UserResponse
+from models.login import LoginData, LoginResponse
+from database import sensor_collection, users_collection 
+import jwt
 
 app = FastAPI()
 
 
 # Cargar la API Key desde las variables de entorno
 API_KEY = os.getenv("API_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey") 
 
 # Dependencia para verificar la API Key
 async def verify_api_key(x_api_key: str = Header(...)):
@@ -130,8 +133,55 @@ async def get_max_sensor_data(
         raise HTTPException(status_code=500, detail="Error retrieving max data")
 
 
+# Endpoint para crear una cuenta
+@app.post("/users", response_model=UserResponse)
+async def create_user(user: UserCreate):
+    try:
+        # Verifica si el correo ya está registrado
+        existing_user = await users_collection.find_one({"email": user.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        # Encripta la contraseña
+        hashed_password = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt())
+
+        # Crea el usuario en la base de datos
+        user_data = {"email": user.email, "password": hashed_password.decode("utf-8")}
+        result = await users_collection.insert_one(user_data)
+
+        # Devuelve el usuario creado (sin contraseña)
+        return {"id": str(result.inserted_id), "email": user.email}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error creating user")
+
+# Endpoint para el login
+@app.post("/login", response_model=LoginResponse)
+async def login(data: LoginData):
+    try:
+        # Busca al usuario por correo electrónico
+        user = await users_collection.find_one({"email": data.email})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        # Verifica la contraseña
+        is_valid_password = bcrypt.checkpw(data.password.encode("utf-8"), user["password"].encode("utf-8"))
+        if not is_valid_password:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        # Genera un token JWT
+        payload = {
+            "sub": str(user["_id"]),
+            "email": user["email"],
+            "exp": datetime.utcnow() + timedelta(hours=1)  # El token expira en 1 hora
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+        return {"access_token": token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error during login")
+
 @app.get("/")
 async def read_root():
-    return {"Hello": "World"}
+    return { "api": "TIC API", "version": "0.3" }
 
 
