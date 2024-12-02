@@ -17,7 +17,7 @@ app = FastAPI()
 origins = [
     "http://localhost:5173",  # Origen de tu app React
     "http://127.0.0.1:5173",
-    "https://tic-api-production.up.railway.app/" # Alias local
+    "https://tic-front-production.up.railway.app" # Alias local
     # Agrega otros orígenes si necesitas
 ]
 
