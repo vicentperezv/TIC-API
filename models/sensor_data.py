@@ -3,5 +3,6 @@ from datetime import datetime
 
 class SensorData(BaseModel):
     temperature: float
-    co2: int
+    noise: float
+    light: float
     timestamp: datetime = datetime.now()

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
 import os
@@ -12,6 +13,20 @@ from database import sensor_collection, users_collection
 import jwt
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",  # Origen de tu app React
+    "http://127.0.0.1:5173", # Alias local
+    # Agrega otros orígenes si necesitas
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos los métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permitir todos los encabezados
+)
 
 
 # Cargar la API Key desde las variables de entorno
@@ -38,7 +53,7 @@ async def add_sensor_data(data: SensorData):
 
 
 # Endpoint para obtener las últimas 10 inserciones
-@app.get("/sensor-data/recent", response_model=List[SensorData],dependencies=[Depends(verify_api_key)] )
+@app.get("/sensor-data/recent", response_model=List[SensorData] )
 async def get_recent_sensor_data():
     try:
         # Obtiene los últimos 10 documentos, ordenados por timestamp en orden descendente
@@ -68,11 +83,13 @@ async def get_average_sensor_data(
         
         # Calcula los promedios usando pandas
         avg_temperature = df["temperature"].mean()
-        avg_co2 = df["co2"].mean()
+        avg_noise = df["noise"].mean()
+        avg_light = df["light"].mean()
 
         return {
             "average_temperature": avg_temperature,
-            "average_co2": avg_co2,
+            "average_noise": avg_noise,
+            "average_light": avg_light,
             "start_date": start_date,
             "end_date": end_date
         }
@@ -121,11 +138,14 @@ async def get_max_sensor_data(
         
         # Encuentra los valores máximos usando pandas
         max_temperature = df["temperature"].max()
-        max_co2 = df["co2"].max()
+        max_noise = df["noise"].max()
+        max_light = df["light"].max()
+
 
         return {
             "max_temperature": max_temperature,
-            "max_co2": max_co2,
+            "max_noise": max_noise,
+            "max_light": max_light,
             "start_date": start_date,
             "end_date": end_date
         }
@@ -172,7 +192,7 @@ async def login(data: LoginData):
         payload = {
             "sub": str(user["_id"]),
             "email": user["email"],
-            "exp": datetime.utcnow() + timedelta(hours=1)  # El token expira en 1 hora
+            "exp": datetime.utcnow() + timedelta(days=30)  # El token expira en 1 hora
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
@@ -182,6 +202,6 @@ async def login(data: LoginData):
 
 @app.get("/")
 async def read_root():
-    return { "api": "TIC API", "version": "0.3" }
+    return { "api": "TIC API", "version": "0.5" }
 
 
