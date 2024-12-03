@@ -16,6 +16,8 @@ tiempo_total = 5  # Tiempo total en minutos (valor inicial)
 intervalo_medicion = 30  # Intervalo en segundos (valor inicial)
 mediciones = []  # Lista para almacenar las mediciones
 medidor_sonido_activo = False  # Estado del medidor de sonido
+medidor_llama_activo = False  # Estado del medidor de llama
+umbral_sonido = 800  # Umbral para el sensor de ruido
 
 # Configurar logging para registrar solo INFO o superior
 logging.basicConfig(
@@ -46,6 +48,7 @@ async def mostrar_menu(update: Update) -> None:
         [InlineKeyboardButton("Medir Sonido", callback_data='medir_sonido')],
         [InlineKeyboardButton("Encender LED RGB", callback_data='modo4')],
         [InlineKeyboardButton("Apagar LED RGB", callback_data='modo5')],
+        [InlineKeyboardButton("Activar/Desactivar Llama", callback_data='activar_llama')],
         [InlineKeyboardButton("Detener Bot", callback_data='detener')]
     ]
 
@@ -64,7 +67,7 @@ async def mostrar_menu(update: Update) -> None:
 
 # Función para manejar las respuestas de los botones
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    global tiempo_total, intervalo_medicion, medidor_sonido_activo
+    global tiempo_total, intervalo_medicion, medidor_sonido_activo, medidor_llama_activo, umbral_sonido
 
     query = update.callback_query
     await query.answer()
@@ -143,7 +146,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Mostrar opciones para medir el sonido
         keyboard = [
             [InlineKeyboardButton("Activar/Desactivar Medidor de Sonido", callback_data='activar_sonido')],
-            [InlineKeyboardButton("Medir por Intervalo", callback_data='configurar_intervalo_sonido')],
+            [InlineKeyboardButton("Configurar Umbral de Sonido", callback_data='configurar_umbral_sonido')],
             [InlineKeyboardButton("Volver al Menú", callback_data='volver_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -154,13 +157,44 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         estado = "activado" if medidor_sonido_activo else "desactivado"
         logging.info(f"Medidor de sonido {estado}")
         respuesta = enviar_comando_arduino("modo6" if medidor_sonido_activo else "modo7")
-        await query.message.reply_text(text=f"Medidor de sonido {estado}: {respuesta}")
+        logging.info(f"Respuesta de Arduino: {respuesta}")
+        await query.message.reply_text(text=f"Medidor de sonido {estado}: {respuesta}. Estado RGB: {'Rojo' if medidor_sonido_activo else 'Verde'}")
         await mostrar_menu(query)
 
-    elif query.data == 'configurar_intervalo_sonido':
-        logging.info("Botón 'Configurar Intervalo de Medición de Sonido' presionado")
-        # Mostrar menú de configuración de tiempos para el sonido
-        await mostrar_configurar_tiempos(query, sonido=True)
+    elif query.data == 'activar_llama':
+        medidor_llama_activo = not medidor_llama_activo
+        estado = "activado" if medidor_llama_activo else "desactivado"
+        logging.info(f"Medidor de llama {estado}")
+        respuesta = enviar_comando_arduino("modo8" if medidor_llama_activo else "modo9")
+        logging.info(f"Respuesta de Arduino: {respuesta}")
+        await query.message.reply_text(text=f"Medidor de llama {estado}: {respuesta}. Estado RGB: {'Rojo' if medidor_llama_activo else 'Verde'}")
+        await mostrar_menu(query)
+
+    elif query.data == 'configurar_umbral_sonido':
+        logging.info("Botón 'Configurar Umbral de Sonido' presionado")
+        await mostrar_configurar_umbral(query)
+    elif query.data == 'incrementar_umbral':
+        umbral_sonido += 10
+        enviar_comando_arduino(f"umbral_sonido:{umbral_sonido}")
+        await mostrar_configurar_umbral(query)
+
+    elif query.data == 'decrementar_umbral':
+        if umbral_sonido > 10:
+            umbral_sonido -= 10
+            enviar_comando_arduino(f"umbral_sonido:{umbral_sonido}")
+        await mostrar_configurar_umbral(query)
+
+    elif query.data == 'incrementar_umbral_1':
+        umbral_sonido += 1
+        enviar_comando_arduino(f"umbral_sonido:{umbral_sonido}")
+        await mostrar_configurar_umbral(query)
+
+    elif query.data == 'decrementar_umbral_1':
+        if umbral_sonido > 1:
+            umbral_sonido -= 1
+            enviar_comando_arduino(f"umbral_sonido:{umbral_sonido}")
+        await mostrar_configurar_umbral(query)
+
 
     elif query.data == 'detener':
         logging.info("Botón 'Detener Bot' presionado")
@@ -187,6 +221,20 @@ async def mostrar_configurar_tiempos(query, sonido=False):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text="Configura el tiempo total y el intervalo de medición:", reply_markup=reply_markup)
+
+async def mostrar_configurar_umbral(query):
+    global umbral_sonido
+
+    # Mostrar menú para ajustar el umbral del sonido
+    keyboard = [
+        [InlineKeyboardButton(f"Umbral de Sonido: {umbral_sonido}", callback_data='none')],
+        [InlineKeyboardButton("+10", callback_data='incrementar_umbral'), InlineKeyboardButton("-10", callback_data='decrementar_umbral')],
+        [InlineKeyboardButton("+1", callback_data='incrementar_umbral_1'), InlineKeyboardButton("-1", callback_data='decrementar_umbral_1')],
+        [InlineKeyboardButton("Volver al Menú", callback_data='volver_menu')]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text="Configura el umbral del sonido:", reply_markup=reply_markup)
 
 # Función para realizar la medición por intervalos
 async def realizar_medicion_por_intervalo(query):
